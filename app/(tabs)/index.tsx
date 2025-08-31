@@ -1,80 +1,204 @@
-import { Image } from "expo-image";
-import { Platform, StyleSheet } from "react-native";
+import { getCategories, getQuestions } from "@/src/api/services/appServices";
+import CategoryCard from "@/src/components/cards/CategoryCard";
+import CategoriesGrid from "@/src/components/CategoriesGrid";
+import PremiumBanner from "@/src/components/PremiumCard";
+import { COLORS } from "@/src/theme/colors";
+import { useS } from "@/src/utils/stale";
+import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HelloWave } from "@/src/components/HelloWave";
-import ParallaxScrollView from "@/src/components/ParallaxScrollView";
-import { ThemedText } from "@/src/components/ThemedText";
-import { ThemedView } from "@/src/components/ThemedView";
+const HERO_H = "25%";
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          style={styles.reactLogo}
-        />
+type Question = { id: string | number; title?: string; image_uri?: string };
+type Category = { id: string | number; title?: string; image_uri?: string };
+
+const HomeScreen = () => {
+  const insets = useSafeAreaInsets();
+  const { s, fs } = useS();
+  const styles = useMemo(() => createStyles(s, fs), [s, fs]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [qs, cs] = await Promise.all([
+          getQuestions<Question[]>(),
+          getCategories<Category[]>(),
+        ]);
+        if (!mounted) return;
+        setQuestions(Array.isArray(qs) ? qs : []);
+        setCategories(Array.isArray(cs) ? cs : []);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.message ?? "Veri alınamadı");
+      } finally {
+        if (mounted) setLoading(false);
       }
-    >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{" "}
-          to see changes. Press{" "}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: "cmd + d",
-              android: "cmd + m",
-              web: "F12",
-            })}
-          </ThemedText>{" "}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">
-            npm run reset-project
-          </ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-  },
-});
+  return (
+    <View style={styles.root}>
+      <View style={styles.hero}>
+        <ImageBackground
+          source={require("@/assets/images/HomeBG.png")}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <Text style={styles.hello}>Hi, plant lover!</Text>
+          <Text style={styles.title}>
+            Good Afternoon! <Text>⛅️</Text>
+          </Text>
+        </View>
+
+        <View style={styles.searchWrap}>
+          <View style={styles.searchContainer}>
+            <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+            <View style={styles.searchOverlay} />
+            <View style={styles.searchContent}>
+              <Ionicons name="search" size={s(18)} color="#94A3B8" />
+              <TextInput
+                placeholder="Search for plants"
+                placeholderTextColor="#94A3B8"
+                style={styles.searchInput}
+                returnKeyType="search"
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
+        <View style={styles.headerBlock}>
+          <PremiumBanner onPress={() => {}} />
+          <Text style={styles.sectionTitle}>Get Started</Text>
+        </View>
+
+        {loading && <ActivityIndicator style={styles.loader} />}
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        {!loading && !error && (
+          <FlatList
+            data={questions}
+            keyExtractor={(item) => String(item.id)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.questionsListContent}
+            renderItem={({ item }) => (
+              <CategoryCard
+                imageUrl={item.image_uri}
+                title={item.title ?? "Category"}
+                onPress={() => {}}
+              />
+            )}
+          />
+        )}
+
+        {!loading && !error && (
+          <CategoriesGrid data={categories} onPressItem={() => {}} />
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+export default HomeScreen;
+
+const createStyles = (s: (n: number) => number, fs: (n: number) => number) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: "#FBFAFA",
+    },
+    hero: {
+      height: HERO_H as any,
+    },
+    header: {
+      paddingHorizontal: s(20),
+    },
+    hello: {
+      fontSize: fs(16),
+      fontFamily: "Rubik_400Regular",
+      color: COLORS.forestInk,
+      opacity: 0.8,
+      marginBottom: s(4),
+    },
+    title: {
+      fontSize: fs(24),
+      fontFamily: "Rubik_500Medium",
+      color: COLORS.forestInk,
+    },
+    searchWrap: {
+      position: "absolute",
+      left: s(16),
+      right: s(16),
+      bottom: s(10),
+    },
+    searchContainer: {
+      borderRadius: s(12),
+      overflow: "hidden",
+    },
+    searchOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(255,255,255,0.90)",
+    },
+    searchContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: s(10),
+      height: s(50),
+      paddingHorizontal: s(14),
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: fs(16),
+      color: "#111827",
+    },
+    content: {
+      flex: 1,
+    },
+    headerBlock: {
+      padding: s(24),
+    },
+    sectionTitle: {
+      fontSize: fs(15),
+      fontFamily: "Rubik_500Medium",
+      paddingTop: s(32),
+    },
+    loader: {
+      marginTop: s(8),
+    },
+    errorText: {
+      color: "#B91C1C",
+      fontSize: fs(14),
+      paddingHorizontal: s(24),
+    },
+    questionsListContent: {
+      paddingLeft: s(24),
+      paddingBottom: s(4),
+      gap: s(10),
+    },
+  });
