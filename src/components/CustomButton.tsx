@@ -1,11 +1,12 @@
 import React from "react";
 import {
-    StyleSheet,
-    Text,
-    TextStyle,
-    TouchableOpacity,
-    ViewStyle,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  ViewStyle,
 } from "react-native";
+import { COLORS } from "../theme/colors";
 
 interface CustomButtonProps {
   title: string;
@@ -29,7 +30,7 @@ export default function CustomButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "#28AF6E",
+    backgroundColor: COLORS.canopyGreen,
     borderRadius: 12,
     padding: 18,
     alignItems: "center",
